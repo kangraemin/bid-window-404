@@ -1,0 +1,48 @@
+name: windows-check
+on:
+  push:
+    branches: [ci]
+jobs:
+  win:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: install
+        shell: pwsh
+        run: |
+          pip install playwright==1.55.0
+          python -m playwright install firefox
+          [System.Environment]::OSVersion.VersionString
+      - name: unzip (Expand-Archive) and names
+        shell: pwsh
+        run: |
+          $z = Get-ChildItem check -Filter *.zip | Select-Object -First 1
+          "ZIP name: $($z.Name)"
+          $z.Name | Out-File -Encoding utf8 out-zipname.txt
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $z.FullName "$env:USERPROFILE\Downloads\$($z.Name)"
+          Expand-Archive -Path "$env:USERPROFILE\Downloads\$($z.Name)" -DestinationPath "$env:USERPROFILE\Downloads\x" -Force
+          Get-ChildItem -Recurse "$env:USERPROFILE\Downloads\x" | ForEach-Object { $_.FullName } | Tee-Object -FilePath out\files.txt
+          Get-FileHash -Algorithm SHA256 (Get-ChildItem -Recurse -File "$env:USERPROFILE\Downloads\x") | Format-Table -AutoSize | Out-String -Width 300 | Tee-Object -FilePath out\hashes.txt
+      - name: browsers
+        shell: pwsh
+        run: |
+          $idx = "$env:USERPROFILE\Downloads\x\bid-window-404\index.html"
+          $F = ([System.Uri]$idx).AbsoluteUri
+          $W = 'https://kangraemin.github.io/bid-window-404/'
+          "file url: $F"
+          foreach ($src in 'file','web') {
+            $U = if ($src -eq 'web') { $W } else { $F }
+            foreach ($r in @(@(1366,768),@(1920,1080))) {
+              python -X utf8 check/platcheck.py --url $U --engine chromium --channel msedge --w $r[0] --h $r[1] --secs 45 --out out --tag "win-edge-$src-$($r[0])"
+              python -X utf8 check/platcheck.py --url $U --engine chromium --channel chrome --w $r[0] --h $r[1] --secs 45 --out out --tag "win-chrome-$src-$($r[0])"
+              python -X utf8 check/platcheck.py --url $U --engine firefox --w $r[0] --h $r[1] --secs 45 --out out --tag "win-firefox-$src-$($r[0])"
+            }
+          }
+          python -X utf8 check/platcheck.py --url $F --engine chromium --channel msedge --w 1920 --h 1080 --secs 420 --out out --tag win-edge-file-full
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: win-results, path: out }

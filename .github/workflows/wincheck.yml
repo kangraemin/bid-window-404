@@ -32,6 +32,31 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           powershell -ExecutionPolicy Bypass -File check/dblclick.ps1
+      - name: audio control test (no device)
+        shell: pwsh
+        run: |
+          Get-Service Audiosrv, AudioEndpointBuilder | Format-Table Name, Status, StartType
+          Get-CimInstance Win32_SoundDevice | Format-Table Name, Status
+          python -X utf8 check/actest.py check/actest.html before-device
+      - name: virtual audio device (Scream)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Set-Service Audiosrv -StartupType Automatic; Set-Service AudioEndpointBuilder -StartupType Automatic
+          Start-Service AudioEndpointBuilder; Start-Service Audiosrv
+          Invoke-WebRequest https://github.com/duncanthrax/scream/releases/download/4.0/Scream4.0.zip -OutFile scream.zip
+          Expand-Archive scream.zip scream -Force
+          Get-ChildItem -Recurse scream | Where-Object { $_.Name -match 'inf$|cat$|devcon|bat$' } | ForEach-Object { $_.FullName }
+          $cat = Get-ChildItem -Recurse scream -Filter *.cat | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          $inf = Get-ChildItem $cat.DirectoryName -Filter *.inf | Select-Object -First 1
+          $cert = (Get-AuthenticodeSignature $cat.FullName).SignerCertificate
+          $st = New-Object System.Security.Cryptography.X509Certificates.X509Store 'TrustedPublisher','LocalMachine'; $st.Open('ReadWrite'); $st.Add($cert); $st.Close()
+          $dev = Get-ChildItem -Recurse scream -Filter devcon*x64*.exe | Select-Object -First 1
+          & $dev.FullName install $inf.FullName '*Scream'
+          Start-Sleep 5
+          Restart-Service Audiosrv -Force
+          Get-CimInstance Win32_SoundDevice | Format-Table Name, Status
+          python -X utf8 check/actest.py check/actest.html after-device
       - name: browsers
         shell: pwsh
         run: |

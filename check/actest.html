@@ -1,0 +1,4 @@
+<!doctype html><meta charset="utf-8"><title>ac test</title><body style="height:100vh" onclick="go()">click<script>
+window.r={};function go(){const c=new AudioContext();const o=c.createOscillator(),a=c.createAnalyser(),g=c.createGain();g.gain.value=0;o.connect(a);a.connect(g);g.connect(c.destination);o.start();c.resume();
+setTimeout(()=>{const b=new Float32Array(2048);a.getFloatTimeDomainData(b);let s=0;for(const v of b)s+=v*v;window.r={state:c.state,rms:Math.sqrt(s/b.length),sr:c.sampleRate}},1500)}
+</script>

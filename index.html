@@ -1780,7 +1780,7 @@ function dlgDraw(d, y = 194) {
   const shown = L.text.slice(0, Math.floor(d.n));
   wrapTyped(L.text, Math.floor(d.n), narr ? w - 30 : w - 92, 0).slice(0, 4).forEach((l, i) => text(l, tx0, y + (narr ? 12 : 22) + i * 15, { c: C.ink }));
   if (d.n >= L.text.length && Math.floor(T / 20) % 2) arrow(x + w - 12, y + h - 12, 'down', C.red);
-  text((d.i + 1) + '/' + d.lines.length, x + w - 10, y + h - 26, { f: 9, c: C.gray, a: 'right' });
+  text((Math.min(d.i, d.lines.length - 1) + 1) + '/' + d.lines.length, x + w - 10, y + h - 26, { f: 9, c: C.gray, a: 'right' });
   if (d.o.skip) button(x + w - 84, y - 24, 78, 20, '건너뛰기 ▶', () => { d.i = d.lines.length; d.onDone && d.onDone(); }, { f: 9, c: C.cream, padT: 10 });
 }
 

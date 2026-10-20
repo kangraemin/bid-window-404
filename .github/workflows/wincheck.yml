@@ -27,6 +27,11 @@ jobs:
           Expand-Archive -Path "$env:USERPROFILE\Downloads\$($z.Name)" -DestinationPath "$env:USERPROFILE\Downloads\x" -Force
           Get-ChildItem -Recurse "$env:USERPROFILE\Downloads\x" | ForEach-Object { $_.FullName } | Tee-Object -FilePath out\files.txt
           Get-FileHash -Algorithm SHA256 (Get-ChildItem -Recurse -File "$env:USERPROFILE\Downloads\x") | Format-Table -AutoSize | Out-String -Width 300 | Tee-Object -FilePath out\hashes.txt
+      - name: double-click (MOTW + ShellExecute)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          powershell -ExecutionPolicy Bypass -File check/dblclick.ps1
       - name: browsers
         shell: pwsh
         run: |

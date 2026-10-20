@@ -75,3 +75,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: win-results, path: out }
+  ie:
+    runs-on: windows-2019
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: ie11
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File check/ie.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: ie-results, path: out }

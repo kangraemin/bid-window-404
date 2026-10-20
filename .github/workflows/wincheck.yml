@@ -41,6 +41,7 @@ jobs:
       - name: virtual audio device (Scream)
         shell: pwsh
         continue-on-error: true
+        timeout-minutes: 4
         run: |
           Set-Service Audiosrv -StartupType Automatic; Set-Service AudioEndpointBuilder -StartupType Automatic
           Start-Service AudioEndpointBuilder; Start-Service Audiosrv

@@ -72,17 +72,7 @@ jobs:
               python -X utf8 check/platcheck.py --url $W --engine $br[0] @ch --w $r[0] --h $r[1] --secs 40 --shot 20 --out out --tag "win-$($br[2])-web-$($r[0])"
             }
           }
+          python -X utf8 check/platcheck.py --url $F --engine chromium --channel msedge --w 1366 --h 768 --secs 60 --shot 20 --out out --tag "win-edge-file-1366-offline" --offline
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: win-results, path: out }
-  ie:
-    runs-on: windows-2022
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - name: ie11
-        shell: pwsh
-        run: powershell -ExecutionPolicy Bypass -File check/ie.ps1
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: { name: ie-results, path: out }

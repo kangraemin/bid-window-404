@@ -8,6 +8,7 @@ ap.add_argument('--url', required=True); ap.add_argument('--engine', default='ch
 ap.add_argument('--channel', default=None); ap.add_argument('--w', type=int, default=1920); ap.add_argument('--h', type=int, default=1080)
 ap.add_argument('--secs', type=int, default=90); ap.add_argument('--shot', type=int, default=15)
 ap.add_argument('--out', required=True); ap.add_argument('--tag', required=True)
+ap.add_argument('--offline', action='store_true')  # 인터넷 끊김 흉내: http(s) 요청 전부 막음
 a = ap.parse_args()
 out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
 INIT = r"""(()=>{const O=window.AudioContext||window.webkitAudioContext;if(!O)return;
@@ -24,7 +25,15 @@ window.__au.peak=[0,0,0];
 setInterval(()=>{const au=window.__au;au.an.forEach((an,i)=>{an.getFloatTimeDomainData(buf);let s=0;for(const v of buf)s+=v*v;const r=Math.sqrt(s/buf.length);if(r>au.peak[i])au.peak[i]=r})},50);
 const hook=()=>{if(window.ZZFX&&!window.ZZFX.__h){const p=window.ZZFX.play.bind(window.ZZFX);window.ZZFX.play=(...x)=>{window.__au.zz++;return p(...x)};window.ZZFX.__h=1}};
 setInterval(hook,200);})()"""
-errs, warns, failed, res, phases = [], [], [], {'tag': a.tag, 'url': a.url}, []
+errs, warns, failed, res, phases = [], [], [], {'tag': a.tag, 'url': a.url, 'offline': a.offline}, []
+ga = {'sent': 0, 'ok': 0, 'failed': 0, 'events': []}  # GA 요청은 게임 오류와 따로 센다
+isga = lambda u: 'google-analytics.com' in u or 'googletagmanager.com' in u
+def gareq(r):
+    if '/g/collect' in r.url:
+        ga['sent'] += 1
+        from urllib.parse import urlparse, parse_qs
+        q = parse_qs(urlparse(r.url).query); en = q.get('en', [''])[0]
+        if en and len(ga['events']) < 40: ga['events'].append(en + ':' + q.get('ep.src', [q.get('dl', [''])[0][-8:]])[0])
 def audio(pg, label):
     r = pg.evaluate("(()=>{const au=window.__au;if(!au)return null;const p=au.peak.slice();au.peak=[0,0,0];return {state:au.ctx.map(c=>c.state),rms:{master:+p[0].toFixed(4),bgm:+p[1].toFixed(4),sfx:+p[2].toFixed(4)},sfxPlays:au.zz}})()")
     phases.append({'at': label, **(r or {})}); return r
@@ -38,8 +47,10 @@ with sync_playwright() as p:
     pg.add_init_script(INIT)
     pg.on('console', lambda m: (errs if m.type == 'error' else warns).append(m.text[:300]) if m.type in ('error', 'warning') else None)
     pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)[:300]))
-    pg.on('requestfailed', lambda r: failed.append(r.url[-120:] + ' ' + str(r.failure)))
-    pg.on('response', lambda r: failed.append(f'{r.status} {r.url[-120:]}') if r.status >= 400 else None)
+    if a.offline: pg.route('http*://**/*', lambda rt: rt.abort('internetdisconnected'))
+    pg.on('request', gareq)
+    pg.on('requestfailed', lambda r: (ga.__setitem__('failed', ga['failed'] + 1) if isga(r.url) else failed.append(r.url[-120:] + ' ' + str(r.failure))))
+    pg.on('response', lambda r: (ga.__setitem__('ok', ga['ok'] + 1) if isga(r.url) and r.status < 400 else (failed.append(f'{r.status} {r.url[-120:]}') if r.status >= 400 else None)))
     pg.goto(a.url); time.sleep(3)
     res['browser'] = f'{a.engine}/{a.channel or "-"} {b.version}'
     res['fonts'] = pg.evaluate("(async()=>{await document.fonts.ready;return [...document.fonts].map(f=>f.family.replace(/\"/g,'')+':'+f.status)})()")
@@ -72,6 +83,9 @@ res['bgmOk'] = any((x.get('rms') or {}).get('bgm', 0) > 0.001 for x in play)
 res['sfxOk'] = any((x.get('rms') or {}).get('sfx', 0) > 0.001 for x in play) and (phases[-1].get('sfxPlays') or 0) > 0
 res['ctxRunning'] = any('running' in (x.get('state') or []) for x in play)
 res['errors'], res['warnings'], res['failedRequests'] = errs, warns[:20], failed
+res['ga'] = ga
+if a.offline:  # 오프라인에선 GA 실패로 생긴 콘솔 에러는 빼고 본다(게임 오류만)
+    res['errorsOffline'] = errs; errs = [e for e in errs if not ('ERR_INTERNET_DISCONNECTED' in e or 'Failed to load resource' in e)]; res['errors'] = errs
 res['ok'] = (not errs) and (not failed) and res['fits'] and res['fontsOk'] and res['bgmOk'] and res['sfxOk'] and res['ctxRunning']
-print(json.dumps({k: res[k] for k in ('tag', 'browser', 'ok', 'fontsOk', 'fits', 'bgmOk', 'sfxOk', 'ctxRunning', 'errors', 'failedRequests')}, ensure_ascii=False))
+print(json.dumps({k: res[k] for k in ('tag', 'browser', 'ok', 'fontsOk', 'fits', 'bgmOk', 'sfxOk', 'ctxRunning', 'errors', 'failedRequests', 'ga')}, ensure_ascii=False))
 (out / f'{a.tag}.json').write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding='utf-8')

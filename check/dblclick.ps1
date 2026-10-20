@@ -37,6 +37,7 @@ New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Force | Out-Null
 Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Name HideFirstRunExperience -Value 1 -Type DWord
 L 'Edge HideFirstRunExperience=1'
 foreach ($d in 'shell','ea') {
+  L "[$d] 시작 UTC $((Get-Date).ToUniversalTime().ToString('HH:mm:ss'))"
   Get-Process msedge, chrome, firefox -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 2
   $idx = "$dl\$d\bid-window-404\index.html"
   Start-Process -FilePath $idx
@@ -52,3 +53,12 @@ foreach ($d in 'shell','ea') {
   $wins = Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName)='$($_.MainWindowTitle)'" }
   L "[$d] 창 제목: $($wins -join ' ; ')"
 }
+# 웹 주소를 기본 브라우저로(GA src=web 확인용)
+Get-Process msedge, chrome, firefox -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 2
+L "[web] 시작 UTC $((Get-Date).ToUniversalTime().ToString('HH:mm:ss'))"
+Start-Process 'https://kangraemin.github.io/bid-window-404/'
+Start-Sleep 15; Shot "$out\dbl-web-15s.png"
+Start-Sleep 30; Shot "$out\dbl-web-45s.png"
+$wins = Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName)='$($_.MainWindowTitle)'" }
+L "[web] 창 제목: $($wins -join ' ; ')"
+L "끝 UTC $((Get-Date).ToUniversalTime().ToString('HH:mm:ss'))"

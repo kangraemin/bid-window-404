@@ -32,6 +32,10 @@ function Shot($p) {
   $bmp.Save($p, [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
   L "shot $p ($($b.Width)x$($b.Height))"
 }
+# 실제 사용자 PC는 Edge 첫 실행 환영 화면을 이미 넘긴 상태 → 정책으로 환영 화면만 숨김(게임 동작엔 영향 없음)
+New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Force | Out-Null
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Name HideFirstRunExperience -Value 1 -Type DWord
+L 'Edge HideFirstRunExperience=1'
 foreach ($d in 'shell','ea') {
   Get-Process msedge, chrome, firefox -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 2
   $idx = "$dl\$d\bid-window-404\index.html"

@@ -1031,9 +1031,8 @@ function save() { try { localStorage.setItem('ppg404_sound', JSON.stringify({ vo
 const BG_GAIN = [0, 0.2, 0.36, 0.55], FX_GAIN = [0, 0.45, 0.8, 1.05];
 function applyVol() { if (A.m) A.m.gain.value = A.muted ? 0 : 0.55 * A.vol; if (A.bg) A.bg.gain.value = BG_GAIN[A.bgLv]; if (A.fx) A.fx.gain.value = FX_GAIN[A.fxLv]; }
 
-function init() {
-  if (A.c) { if (A.c.state === 'suspended') A.c.resume(); return; }
-  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+function build() {
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
   const c = A.c = new AC();
   A.m = c.createGain(); A.m.connect(c.destination); applyVol();
   A.bg = c.createGain(); A.bg.connect(A.m);
@@ -1047,10 +1046,43 @@ function init() {
   for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
   A.noise = b;
   ZZFX.audioContext = c; ZZFX.output = A.fx; ZZFX.volume = 0.5;
+  A.next = c.currentTime;
+  return true;
+}
+function init() {
+  if (A.c) { wake(true); return; }
+  if (!build()) return;
   decodeBgm();
   setInterval(schedule, 40);
+  // 폰에서 다른 앱에 갔다 오면 소리가 멈춘 채 남는다 → 숨을 때 멈추고, 돌아오거나 다음 터치 때 다시 켠다
+  document.addEventListener('visibilitychange', () => document.hidden ? sleep() : wake(false));
+  addEventListener('pagehide', sleep);
+  addEventListener('pageshow', () => wake(false));
+  addEventListener('focus', () => wake(false));
+  for (const ev of ['pointerdown', 'touchend', 'keydown']) addEventListener(ev, () => wake(true), true);
   if (A.want !== null) { const w = A.want; A.want = null; music(w); }
 }
+function sleep() { if (A.c && A.c.state === 'running') A.c.suspend().catch(() => {}); }
+// gesture=true면 사용자 조작 안이라 새 AudioContext를 만들어도 바로 소리가 난다
+function wake(gesture) {
+  const c = A.c; if (!c || document.hidden) return;
+  if (c.state === 'running') { A.bad = false; return; }
+  if (c.state === 'closed' || (gesture && A.bad)) { rebuild(); return; }
+  let p; try { p = c.resume(); } catch (e) { A.bad = true; return; }
+  if (p && p.then) p.then(() => { if (c.state !== 'running') A.bad = true; }, () => { A.bad = true; });
+  setTimeout(() => { if (A.c === c && c.state !== 'running' && !document.hidden) A.bad = true; }, 400);
+}
+// 되살릴 수 없는 AudioContext(iOS interrupted·closed)는 새로 만들고 게인·배경음·효과음을 다시 잇는다
+function rebuild() {
+  const old = A.c, name = A.songName, after = A.after;
+  if (A.src) { try { A.src.stop(); } catch (e) {} A.src = null; }
+  try { if (old.state !== 'closed') old.close().catch(() => {}); } catch (e) {}
+  A.c = null; A.bad = false;
+  if (!build()) return;
+  A.songName = null; A.song = null;
+  if (name) music(name, after);
+}
+
 function osc(dest, type, f, t, d, v, f2, duty) {
   const c = A.c, o = c.createOscillator(), g = c.createGain();
   if (type === 'pulse') o.setPeriodicWave(A.pulse[duty || 0.25]); else o.type = type;
@@ -1163,6 +1195,8 @@ function playTrack(arr, i, t, sd, fn) {
 function schedule() {
   const s = A.song; if (!s || !A.c) return;
   const sd = 60 / s.bpm / 2;
+  // 멈췄다 돌아오면 밀린 음을 한꺼번에 내지 않고 지금 시각부터 이어 간다
+  const now = A.c.currentTime; if (A.next < now - 0.05 || A.next > now + 1) A.next = now + 0.05;
   while (A.next < A.c.currentTime + 0.18) {
     const t = A.next, i = A.step;
     if (s.once && i >= s.L.length) { const a = A.after; A.song = null; A.songName = null; if (a) music(a); return; }

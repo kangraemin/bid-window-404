@@ -1,4 +1,4 @@
-# 더블클릭 흉내: 메일 다운로드 표시(MOTW ZoneId=3) 붙인 ZIP → 탐색기식 압축풀기·Expand-Archive → Start-Process(ShellExecute)로 index.html → 15·45초 데스크톱 캡처
+﻿# 더블클릭 흉내: 메일 다운로드 표시(MOTW ZoneId=3) 붙인 ZIP → 탐색기식 압축풀기·Expand-Archive → Start-Process(ShellExecute)로 index.html → 15·45초 데스크톱 캡처
 $ErrorActionPreference = 'Continue'
 $out = (Resolve-Path out).Path
 $log = "$out\dblclick.txt"

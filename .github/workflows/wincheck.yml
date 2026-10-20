@@ -5,7 +5,7 @@ on:
 jobs:
   win:
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,15 +39,13 @@ jobs:
           $F = ([System.Uri]$idx).AbsoluteUri
           $W = 'https://kangraemin.github.io/bid-window-404/'
           "file url: $F"
-          foreach ($src in 'file','web') {
-            $U = if ($src -eq 'web') { $W } else { $F }
-            foreach ($r in @(@(1366,768),@(1920,1080))) {
-              python -X utf8 check/platcheck.py --url $U --engine chromium --channel msedge --w $r[0] --h $r[1] --secs 45 --out out --tag "win-edge-$src-$($r[0])"
-              python -X utf8 check/platcheck.py --url $U --engine chromium --channel chrome --w $r[0] --h $r[1] --secs 45 --out out --tag "win-chrome-$src-$($r[0])"
-              python -X utf8 check/platcheck.py --url $U --engine firefox --w $r[0] --h $r[1] --secs 45 --out out --tag "win-firefox-$src-$($r[0])"
+          foreach ($r in @(@(1366,768),@(1920,1080))) {
+            foreach ($br in @(@('chromium','msedge','edge'),@('chromium','chrome','chrome'),@('firefox','','firefox'))) {
+              $ch = if ($br[1]) { @('--channel', $br[1]) } else { @() }
+              python -X utf8 check/platcheck.py --url $F --engine $br[0] @ch --w $r[0] --h $r[1] --secs 200 --shot 15 --out out --tag "win-$($br[2])-file-$($r[0])"
+              python -X utf8 check/platcheck.py --url $W --engine $br[0] @ch --w $r[0] --h $r[1] --secs 40 --shot 20 --out out --tag "win-$($br[2])-web-$($r[0])"
             }
           }
-          python -X utf8 check/platcheck.py --url $F --engine chromium --channel msedge --w 1920 --h 1080 --secs 480 --out out --tag win-edge-file-full
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: win-results, path: out }

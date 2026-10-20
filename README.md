@@ -5,3 +5,4 @@
 - 웹에서 바로 실행: https://kangraemin.github.io/bid-window-404/
 - 공모전 제출 실행파일(ZIP)과 같은 파일입니다.
 - 글꼴 Galmuri(SIL OFL 1.1), 효과음 ZzFX(MIT).
+- 익명 접속 통계(Google Analytics)를 수집합니다. 개인정보는 수집하지 않습니다.

@@ -42,7 +42,7 @@ jobs:
           foreach ($r in @(@(1366,768),@(1920,1080))) {
             foreach ($br in @(@('chromium','msedge','edge'),@('chromium','chrome','chrome'),@('firefox','','firefox'))) {
               $ch = if ($br[1]) { @('--channel', $br[1]) } else { @() }
-              python -X utf8 check/platcheck.py --url $F --engine $br[0] @ch --w $r[0] --h $r[1] --secs 200 --shot 15 --out out --tag "win-$($br[2])-file-$($r[0])"
+              python -X utf8 check/platcheck.py --url $F --engine $br[0] @ch --w $r[0] --h $r[1] --secs 250 --shot 15 --out out --tag "win-$($br[2])-file-$($r[0])"
               python -X utf8 check/platcheck.py --url $W --engine $br[0] @ch --w $r[0] --h $r[1] --secs 40 --shot 20 --out out --tag "win-$($br[2])-web-$($r[0])"
             }
           }

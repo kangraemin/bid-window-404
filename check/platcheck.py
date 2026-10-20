@@ -54,6 +54,8 @@ with sync_playwright() as p:
     t0, n, last, steps, trail = time.time(), 1, time.time(), 0, []
     while time.time() - t0 < a.secs:
         st = pg.evaluate("window.__game.botStep('right')"); steps += 1
+        if st == 'idle' and pg.evaluate("!!(window.__game.scene && window.__game.scene.btns)"):  # 튜토리얼 끝 → 타이틀: 본편 시작(=시작하기)
+            pg.evaluate("window.__game.newGame()"); trail.append('title->newGame'); time.sleep(1)
         k = pg.evaluate("(()=>{const s=window.__game.scene,G=window.__game.G;return (G?G.day:'-')+'/'+(s&&s.dbg?'work':(s&&s.d?'talk':(s&&s.next?'result':'other')))})()")
         if not trail or trail[-1] != k: trail.append(k)
         if time.time() - last > a.shot:

@@ -11,10 +11,12 @@ errs, res = [], {'tag': a.tag, 'url': a.url}
 with sync_playwright() as p:
     bt = getattr(p, a.engine)
     kw = {'channel': a.channel} if a.channel else {}
-    if a.engine == 'chromium': kw['args'] = ['--autoplay-policy=no-user-gesture-required']
+    if a.engine == 'chromium': kw['args'] = ['--autoplay-policy=no-user-gesture-required', '--mute-audio']
+    if a.engine == 'firefox': kw['firefox_user_prefs'] = {'media.volume_scale': '0.0'}
+    kw['headless'] = True
     b = bt.launch(**kw)
     pg = b.new_page(viewport={'width': a.w, 'height': a.h})
-    pg.add_init_script("(()=>{const O=window.AudioContext||window.webkitAudioContext;if(!O)return;window.__acs=[];const W=function(...a){const c=new O(...a);window.__acs.push(c);return c};W.prototype=O.prototype;window.AudioContext=W;window.webkitAudioContext=W})()")
+    pg.add_init_script("(()=>{const O=window.AudioContext||window.webkitAudioContext;if(!O)return;window.__acs=[];const W=function(...a){const c=new O(...a);window.__acs.push(c);const g=c.createGain();g.gain.value=0;g.connect(c.destination);Object.defineProperty(c,'destination',{get:()=>g});return c};W.prototype=O.prototype;window.AudioContext=W;window.webkitAudioContext=W})()")
     pg.on('console', lambda m: errs.append(m.type + ': ' + m.text) if m.type == 'error' else None)
     pg.on('pageerror', lambda e: errs.append('PAGEERROR ' + str(e)))
     pg.goto(a.url); time.sleep(3)

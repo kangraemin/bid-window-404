@@ -28,7 +28,7 @@
 <div id="rot" hidden><div class="ph"></div><p>휴대폰을 <b>왼쪽으로 눕혀</b> 주세요</p><p class="s">게임 화면이 가로로 누워 있어요.<br>눕히면 글자가 똑바로 보여요.</p><button type="button">안내 닫기 (화면은 가로 그대로)</button></div>
 <div id="fontwarm"><span style="font-family:G11">가</span><span style="font-family:G11B">가</span><span style="font-family:G9">가</span></div>
 <script>/* analytics.js */
-// 익명 접속 통계(GA4). 웹 주소는 gtag, 압축 파일(file://)은 gtag가 전송을 막아서 같은 공개 수집 주소(/g/collect)로 직접 보낸다.
+// 익명 접속 통계(GA4). 웹 주소·압축 파일(file://) 모두 공개 수집 주소(/g/collect)로 직접 보낸다(외부 스크립트 없음).
 // 쿠키 대신 localStorage 익명 번호를 쓰고, 비밀키는 없다. 인터넷이 없거나 막혀 있어도 게임은 그대로 돈다(모든 호출을 try로 감싼다).
 (() => {
   const MID = 'G-968D1S9241', HOME = 'https://kangraemin.github.io/bid-window-404/';
@@ -40,40 +40,23 @@
 
   let play = 0, last = Date.now();
   function tick() { const now = Date.now(); if (!document.hidden) play += Math.min(now - last, 5000); last = now; }
-  let send;
-
-  if (src !== 'zip') {
-    window.dataLayer = window.dataLayer || [];
-    const gtag = function () { window.dataLayer.push(arguments); };
-    try {
-      gtag('js', new Date());
-      gtag('config', MID, {
-        send_page_view: false, client_storage: 'none', client_id: cid, page_location: DL, page_title: DT,
-        allow_google_signals: false, allow_ad_personalization_signals: false,
-      });
-      const s = document.createElement('script');
-      s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + MID; s.onerror = () => {};
-      document.head.appendChild(s);
-    } catch (e) {}
-    send = (name, p) => gtag('event', name, p);
-  } else {
-    // gtag와 같은 형식(v=2)으로 직접 보낸다
-    const sct = (+ls('ppg404_sct') || 0) + 1; ls('ppg404_sct', String(sct));
-    const sid = String(Math.floor(Date.now() / 1000)), pl = Math.floor(Math.random() * 1e9);
-    let seq = 0, lastPlay = 0;
-    send = (name, p) => {
-      const q = new URLSearchParams({
-        v: '2', tid: MID, cid, sid, sct: String(sct), seg: play >= 10000 ? '1' : '0', _p: String(pl), _s: String(++seq), npa: '1',
-        ul: (navigator.language || 'ko').toLowerCase(), sr: screen.width + 'x' + screen.height, dl: DL, dt: DT, en: name,
-      });
-      if (seq === 1) { q.set('_ss', '1'); q.set('_nsi', '1'); if (first) q.set('_fv', '1'); }
-      const et = Math.max(1, play - lastPlay); lastPlay = play; if (seq > 1) q.set('_et', String(et));
-      Object.keys(p || {}).forEach(k => { const v = p[k]; if (v == null) return; q.set((typeof v === 'number' ? 'epn.' : 'ep.') + k, String(v)); });
-      const url = 'https://www.google-analytics.com/g/collect?' + q.toString();
-      try { if (navigator.sendBeacon && navigator.sendBeacon(url)) return; } catch (e) {}
-      try { fetch(url, { method: 'POST', mode: 'no-cors', keepalive: true }).catch(() => {}); } catch (e) {}
-    };
-  }
+  // gtag는 file://에서 전송을 막고 github.io에서는 쿠키 경고(Firefox)를 남겨서, 두 경로 모두 gtag와 같은 형식(v=2)으로 직접 보낸다
+  const sct = (+ls('ppg404_sct') || 0) + 1; ls('ppg404_sct', String(sct));
+  const sid = String(Math.floor(Date.now() / 1000)), pl = Math.floor(Math.random() * 1e9);
+  let seq = 0, lastPlay = 0;
+  const send = (name, p) => {
+    if (navigator.onLine === false) return; // 인터넷이 없으면 보내지 않는다(Safari 콘솔 경고 방지)
+    const q = new URLSearchParams({
+      v: '2', tid: MID, cid, sid, sct: String(sct), seg: play >= 10000 ? '1' : '0', _p: String(pl), _s: String(++seq), npa: '1',
+      ul: (navigator.language || 'ko').toLowerCase(), sr: screen.width + 'x' + screen.height, dl: DL, dt: DT, en: name,
+    });
+    if (seq === 1) { q.set('_ss', '1'); q.set('_nsi', '1'); if (first) q.set('_fv', '1'); }
+    const et = Math.max(1, play - lastPlay); lastPlay = play; if (seq > 1) q.set('_et', String(et));
+    Object.keys(p || {}).forEach(k => { const v = p[k]; if (v == null) return; q.set((typeof v === 'number' ? 'epn.' : 'ep.') + k, String(v)); });
+    const url = 'https://www.google-analytics.com/g/collect?' + q.toString();
+    try { if (navigator.sendBeacon && navigator.sendBeacon(url)) return; } catch (e) {}
+    try { fetch(url, { method: 'POST', mode: 'no-cors', keepalive: true }).catch(() => {}); } catch (e) {}
+  };
 
   window.__ga = (name, params) => {
     try { tick(); send(name, Object.assign({ src, play_sec: Math.round(play / 1000) }, params || {})); } catch (e) {}
